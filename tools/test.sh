@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python -m unittest discover -s ~/Code/powerbank/tests
+python -m unittest discover -s ~/Code/powerbank/tests -v
