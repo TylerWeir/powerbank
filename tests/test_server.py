@@ -9,7 +9,7 @@ import time
 import os
 
 HOST = "127.0.0.1"
-PORT = 65432
+PORT = 8080
 
 class TestServer(unittest.TestCase):
     """Class to test the functionality of the powerbank server."""
@@ -20,7 +20,7 @@ class TestServer(unittest.TestCase):
     def tearDown(self):
         self.test_socket.close()
 
-    def test_connection(self):
+    def test_a_connection(self):
         """Connect to server."""
         try:
             self.test_socket.connect((HOST, PORT))
@@ -29,13 +29,13 @@ class TestServer(unittest.TestCase):
         except ConnectionRefusedError:
             self.fail("The connection was refused")
 
-    def test_send_data(self):
+    def test_b_send_data(self):
         """Send data to server."""
         self.test_socket.sendall(b"Hello there!")
         data = self.test_socket.recv(1024)
         self.assertEqual(data, "General Kenobi.")
 
-    def test_log_data(self):
+    def test_c_log_data(self):
         """Server logs data."""
         # Send the data
         self.test_socket.sendall(2.031)
@@ -58,7 +58,7 @@ class TestServer(unittest.TestCase):
                     log_file.write(value)
             log_file.truncate()
 
-    def test_make_log(self):
+    def test_d_make_log(self):
         """Server makes log file."""
         log_file_name = '~/Code/powerbank/log.txt'
 
@@ -77,7 +77,7 @@ class TestServer(unittest.TestCase):
         os.remove(log_file_name)
         os.rename('~/Code/powerbank/tmp_log.txt', log_file_name)
 
-    def test_bad_request(self):
+    def test_e_bad_request(self):
         """Sever handles bad data"""
         with open('~/Code/powerbank/log.txt', mode='r', encoding='UTF-8') as log_file:
             # look for the lines
@@ -95,7 +95,7 @@ class TestServer(unittest.TestCase):
         # This works because values are tuples
         self.assertEqual(lines, after_lines)
 
-    def test_multiple_connections(self):
+    def test_f_multiple_connections(self):
         """Server handles simultaneous connections."""
         other_test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         other_test_socket.connect((HOST, PORT))
