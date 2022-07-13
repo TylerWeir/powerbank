@@ -4,6 +4,7 @@ Script to test the server.
 """
 
 import unittest
+import struct
 import socket
 import time
 import os
@@ -14,36 +15,49 @@ PORT = 8080
 class TestServer(unittest.TestCase):
     """Class to test the functionality of the powerbank server."""
 
-    def setUp(self):
-        self.test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    def tearDown(self):
-        self.test_socket.close()
-
-    def test_a_connection(self):
+    def test_a(self):
         """Connect to server."""
-        try:
-            self.test_socket.connect((HOST, PORT))
-        except TimeoutError:
-            self.fail("Timed out trying to connect to the server")
-        except ConnectionRefusedError:
-            self.fail("The connection was refused")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as test_socket:
+            try:
+                test_socket.settimeout(5)
+                test_socket.connect((HOST, PORT))
+            except TimeoutError:
+                self.fail("Timed out trying to connect to the server.")
+            except ConnectionRefusedError:
+                self.fail("The connection was refused.")
 
-    def test_b_send_data(self):
-        """Send data to server."""
-        self.test_socket.sendall(b"Hello there!")
-        data = self.test_socket.recv(1024)
-        self.assertEqual(data, "General Kenobi.")
+            try: 
+                test_socket.sendall(b"Hello there!\n")
+                response = test_socket.recv(len(b"General Kenobi")).decode()
+                assertEqual(response, "General Kenobi")
+            except TimeoutError:
+                self.fail("Timed out waiting for a response from the server.")
 
-    def test_c_log_data(self):
+    def test_b(self):
         """Server logs data."""
-        # Send the data
-        self.test_socket.sendall(2.031)
-        time.sleep(1)
-        self.test_socket.sendall(3.532)
-        time.sleep(1)
-        self.test_socket.sendall(54.334)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as test_socket:
+            try:
+                test_socket.settimeout(5)
+                test_socket.connect((HOST, PORT))
+            except TimeoutError:
+                self.fail("Timed out trying to connect to the server.")
+            except ConnectionRefusedError:
+                self.fail("The connection was refused.")
 
+            try:
+                num_1 = struct.pack("h", 4000)
+                test_socket.sendall(num_1)
+                num_2 = struct.pack("h", 13242)
+                test_socket.sendall(num_2)
+                num_3 = struct.pack("h", 631)
+                test_socket.sendall(num_3)
+            except TimeoutError:
+                self.fail("Timed out waiting for a response from the server.")
+
+        # Wait a bit after sending
+        time.sleep(3)
+        if not os.path.exists('~/Code/powerbank/log.txt'):
+            self.fail("The log file does not exist.")
         with open('~/Code/powerbank/log.txt', mode='r', encoding='UTF-8') as log_file:
             # look for the lines
             lines = log_file.readlines()
@@ -58,26 +72,44 @@ class TestServer(unittest.TestCase):
                     log_file.write(value)
             log_file.truncate()
 
-    def test_d_make_log(self):
+    def test_e(self):
         """Server makes log file."""
         log_file_name = '~/Code/powerbank/log.txt'
+        tmp_log_file = '~/Code/powerbank/tmp_log.txt'
 
         # Move the original file
         if os.path.exists(log_file_name):
-            os.rename(log_file_name, '~/Code/powerbank/tmp_log.txt')
+            os.rename(log_file_name, tmp_log_file)
 
         # Send some data
-        self.test_socket.sendall(23.252)
-        time.sleep(0.5)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as test_socket:
+            try:
+                test_socket.settimeout(5)
+                test_socket.connect((HOST, PORT))
+            except TimeoutError:
+                self.fail("Timed out trying to connect to the server.")
+            except ConnectionRefusedError:
+                self.fail("The connection was refused.")
 
+            try:
+                num_1 = struct.pack("h", 420)
+                test_socket.sendall(num_1)
+            except TimeoutError:
+                self.fail("Timed out waiting for a response from the server.")
+
+        # Wait a bit after sending
+        time.sleep(3)
         # Check that the log file was remade
         self.assertTrue(os.path.exists(log_file_name))
 
         # Fix it all
-        os.remove(log_file_name)
-        os.rename('~/Code/powerbank/tmp_log.txt', log_file_name)
+        if os.path.exists(tmp_log_file):
+            os.remove(log_file_name)
+            os.rename(tmp_log_file, log_file_name)
+        else:
+            os.remove(log_file_name)
 
-    def test_e_bad_request(self):
+    def test_e(self):
         """Sever handles bad data"""
         with open('~/Code/powerbank/log.txt', mode='r', encoding='UTF-8') as log_file:
             # look for the lines
@@ -95,7 +127,7 @@ class TestServer(unittest.TestCase):
         # This works because values are tuples
         self.assertEqual(lines, after_lines)
 
-    def test_f_multiple_connections(self):
+    def test_f(self):
         """Server handles simultaneous connections."""
         other_test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         other_test_socket.connect((HOST, PORT))
@@ -112,4 +144,4 @@ class TestServer(unittest.TestCase):
         other_test_socket.close()
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=2)

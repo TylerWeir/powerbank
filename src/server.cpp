@@ -4,7 +4,6 @@
  * into a log file.
  */
 
-#include <iostream>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -12,12 +11,16 @@
 #include <netdb.h>
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
 #include <time.h>
 
 #define ISVALIDSOCKET(s) ((s) >= 0)
 #define CLOSESOCKET(s) close(s)
 #define SOCKET int
 #define GETSOCKETERRNO() (errno)
+
+#include <stdio.h>
+#include <string.h>
 
 int main() {
 
@@ -58,37 +61,76 @@ int main() {
 	}
 
 
+	fd_set master;
+	FD_ZERO(&master);
+	FD_SET(socket_listen, &master);
+	SOCKET max_socket = socket_listen;
+
+
 	printf("Waiting for connection...\n");
-	struct sockaddr_storage client_address;
-	socklen_t client_len = sizeof(client_address);
-	SOCKET socket_client = accept(socket_listen,
-			(struct sockaddr*) &client_address, &client_len);
-	if (!ISVALIDSOCKET(socket_client)) {
-		fprintf(stderr, "accept() failed. (%d)\n", GETSOCKETERRNO());
-		return 1;
-	}
 
 	while(1) {
-		printf("Client is connected... ");
-		char address_buffer[100];
-		getnameinfo((struct sockaddr*) &client_address,
-				client_len, address_buffer, sizeof(address_buffer), 0, 0,
-				NI_NUMERICHOST);
-		printf("%s\n", address_buffer);
+		// Copy master into reads since select modifies the set given to it
+		fd_set reads;
+		reads = master;
+		if (select(max_socket+1, &reads, 0, 0, 0) < 0) {
+			fprintf(stderr, "select() failed. (%d)\n", GETSOCKETERRNO());
+			return 1;
+		}
 
+		// Loop through the sockets to see if they were flagged by select as
+		// being ready to read
+		SOCKET i;
+		for (i = 1; i <= max_socket; i++) {
+			if (FD_ISSET(i, &reads)) {
 
-		printf("Reading request...\n");
-		char request[1024];
-		int bytes_received = recv(socket_client, request, 1024, 0);
-		printf("Received %d bytes.\n", bytes_received);
+				// If the listening socket is marked as ready, that means it is 
+				// ready to accept a new connection.
+				if (i == socket_listen) {
+					struct sockaddr_storage client_address;
+					socklen_t client_len  = sizeof(client_address);
+					SOCKET socket_client = accept(socket_listen, 
+							(struct sockaddr*) &client_address, &client_len);
 
+					if (!ISVALIDSOCKET(socket_client)) {
+						fprintf(stderr, "accept() failed. (%d)\n", GETSOCKETERRNO());
+						return 1;
+					}
 
-		printf("Sending response...\n");
-		const char *response = "General Kenobi.";
-		int bytes_sent = send(socket_client, response, strlen(response), 0);
-		printf("Sent %d of %d bytes.\n", bytes_sent, (int)strlen(response));
+					FD_SET(socket_client, &master);
+					if (socket_client > max_socket)
+						max_socket = socket_client;
 
-	}	
+					char address_buffer[100];
+					getnameinfo((struct sockaddr*)&client_address, client_len, 
+							address_buffer, sizeof(address_buffer), 0, 0, NI_NUMERICHOST);
+					printf("New connection from %s\n", address_buffer);
+				} else {
+					// If the ready socket is not the listening socket, then there is 
+					// some data to read.
+					char read[1024];
+					int bytes_received = recv(i, read, 1024, 0);
+
+					// Close the socket if it sends an empty request
+					if (bytes_received < 1) {
+						FD_CLR(i, &master);
+						printf("Closing client connection.\n");
+						CLOSESOCKET(i);
+						continue;
+					}
+
+					int j;
+					for (j = 0; j < bytes_received; ++j)
+						printf("%c", read[j]);
+					// TODO tmp echo response
+					send(i, read, bytes_received, 0);
+				}
+			}
+		}
+	}
+
+	printf("Finished.\n");
+	return 0;
 }
 
 
