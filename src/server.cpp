@@ -20,6 +20,7 @@
 #define GETSOCKETERRNO() (errno)
 
 #include <stdio.h>
+#include <functional>
 #include <string.h>
 
 int main() {
@@ -122,8 +123,10 @@ int main() {
 					int j;
 					for (j = 0; j < bytes_received; ++j)
 						printf("%c", read[j]);
-					// TODO tmp echo response
-					send(i, read, bytes_received, 0);
+
+					char response[] = "General Kenobi";
+					printf("sending %d bytes\n", (int)sizeof(response));
+					send(i, response, sizeof(response), 0);
 				}
 			}
 		}

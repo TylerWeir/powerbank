@@ -29,7 +29,7 @@ class TestServer(unittest.TestCase):
             try: 
                 test_socket.sendall(b"Hello there!\n")
                 response = test_socket.recv(len(b"General Kenobi")).decode()
-                assertEqual(response, "General Kenobi")
+                self.assertEqual(response, "General Kenobi")
             except TimeoutError:
                 self.fail("Timed out waiting for a response from the server.")
 
@@ -72,7 +72,7 @@ class TestServer(unittest.TestCase):
                     log_file.write(value)
             log_file.truncate()
 
-    def test_e(self):
+    def test_c(self):
         """Server makes log file."""
         log_file_name = '~/Code/powerbank/log.txt'
         tmp_log_file = '~/Code/powerbank/tmp_log.txt'
@@ -109,7 +109,7 @@ class TestServer(unittest.TestCase):
         else:
             os.remove(log_file_name)
 
-    def test_e(self):
+    def test_d(self):
         """Sever handles bad data"""
         with open('~/Code/powerbank/log.txt', mode='r', encoding='UTF-8') as log_file:
             # look for the lines
@@ -117,7 +117,7 @@ class TestServer(unittest.TestCase):
 
         self.test_socket.sendall(b"bad data")
         time.sleep(0.5)
-        self.test_socket.sendall(b"4f.30")
+        self.test_socket.sendall(b"")
         time.sleep(0.5)
 
         with open('~/Code/powerbank/log.txt', mode='r', encoding='UTF-8') as log_file:
@@ -127,7 +127,7 @@ class TestServer(unittest.TestCase):
         # This works because values are tuples
         self.assertEqual(lines, after_lines)
 
-    def test_f(self):
+    def test_e(self):
         """Server handles simultaneous connections."""
         other_test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         other_test_socket.connect((HOST, PORT))
